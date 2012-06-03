@@ -1,0 +1,249 @@
+<html>
+<head>
+<style type="text/css">
+* {
+	margin: 0;
+	padding: 0;
+}
+</style>
+<script type="text/javascript">
+window.addEventListener('load', eventWindowLoaded, false);
+function eventWindowLoaded() {
+	canvasApp();
+}
+
+function canvasApp() {
+	var userAgent = window.navigator.userAgent.toLowerCase();
+
+	var canvas = document.getElementById('canvas');
+	var ctx = canvas.getContext('2d');
+	canvas.width = innerWidth;
+	canvas.height = innerHeight;
+	var w = canvas.width;
+	var h = canvas.height;
+	window.objMouseLight;
+
+	var me = new Me();
+	var dropCount = 500;
+	var arrDrop = new Array();
+	var arrLight = new Array();
+
+	init();
+
+	function init() {
+		for (var i = 0; i < dropCount; i++) {
+			var objDrop = new Drop();
+			objDrop.setParam(w, h);
+			arrDrop.push(objDrop);
+		}
+		var wEventName = 'mousewheel';
+		if (userAgent.indexOf("firefox") > -1) wEventName = 'DOMMouseScroll';
+		canvas.addEventListener('mousemove', mouseMove, false);
+		canvas.addEventListener(wEventName, mouseWheel, false);
+		canvas.addEventListener('mousedown', mouseDown, false);
+		canvas.addEventListener('mouseup', mouseUp, false);
+		setInterval(draw, 50);
+	}
+
+	function draw() {
+		ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+		ctx.fillRect(0, 0, w, h);
+		ctx.strokeStyle = '#000000';
+		ctx.strokeRect(1, 1, w-2, h-2);
+		for(var i = 0; i < arrDrop.length; i++) {
+			var objDrop = arrDrop[i];
+			ctx.beginPath();
+			ctx.fillStyle = '#ccffff';
+			ctx.lineWidth = 0;
+			ctx.arc(objDrop.x, objDrop.y, objDrop.radius, 0, Math.PI * 2, true);
+			ctx.fill();
+			objDrop.move(h);
+			objDrop.reset(w, h);
+			delete objDrop;
+		}
+
+		if(arrLight.length !== 0) {
+			for(var j = 0; j < arrLight.length; j++) {
+				var objLight = arrLight[j];
+				objLight.draw(ctx);
+			}
+		}
+
+		if(typeof objMouseLight !== 'undefined' && objMouseLight.setFlg) {
+			objMouseLight.draw(ctx);
+		}
+	}
+
+	function mouseMove(e) {
+		me.endx = e.clientX;
+		me.endy = e.clientY;
+		if (typeof objMouseLight !== 'undefined') {
+			if (!me.mousedown) {
+				objMouseLight.setParam(e);
+			}
+		} else {
+			if (me.mousedown) {
+				me.drag = true;
+				lightRadiusSizeChange();
+			}
+		}
+	}
+
+	function lightRadiusSizeChange() {
+		var onObjLight = arrLight[onLightIndex];
+		var dx = onObjLight.x - me.endx;
+		var dy = onObjLight.y - me.endy;
+		var distance = Math.sqrt((dx * dx) + (dy * dy));
+		if(typeof me.predistance !== 'undefined') {
+			if(me.predistance > distance) {
+				onObjLight.radius -= me.predistance - distance;
+			} else if(me.predistance < distance) {
+				onObjLight.radius += distance - me.predistance;
+			}
+		}
+		if(onObjLight.radius < 1) {
+			onObjLight.radius = 1;
+		}
+		me.predistance = distance;
+
+	}
+
+	function mouseWheel(e) {
+		if(typeof objMouseLight !== 'undefined' && objMouseLight.setFlg) {
+			objMouseLight.changeColor();
+		} else if(me.onLightOverCheck(arrLight)) {
+			var onObjLight = arrLight[onLightIndex];
+			onObjLight.changeColor();
+		}
+	}
+
+	function mouseDown(e) {
+		me.startx = e.clientX;
+		me.starty = e.clientY;
+		me.mouseup = false;
+		me.mousedown = true;
+		if (typeof objMouseLight === 'undefined') {
+			if(!me.onLightOverCheck(arrLight)) {
+				objMouseLight = new Light();
+				objMouseLight.setParam(e);
+			}
+		} else {
+			arrLight.push(objMouseLight);
+			delete objMouseLight;
+		}
+	}
+
+	function mouseUp(e) {
+		me.mouseup = true;
+		me.mousedown = false;
+		me.drag = false;
+		delete onLightIndex;
+		delete me.predistance;
+	}
+}
+
+function Drop() {
+	this.x;
+	this.y;
+	this.radius;
+	this.speed;
+	this.r;
+	this.g;
+	this.b;
+	this.a;
+
+	this.setParam = function(w, h) {
+		this.x = Math.floor(Math.random() * w);
+		this.y = Math.floor(Math.random() * h);
+		this.radius = 0.1 * Math.floor(Math.random() * 10);
+		this.speed = (50 + Math.round(Math.random() * 75)) * 0.001;
+		this.r = Math.floor(Math.random() * 256);
+		this.g = Math.floor(Math.random() * 256);
+		this.b = Math.floor(Math.random() * 256);
+		this.a = 1;
+	};
+
+	this.move = function(h) {
+		this.y += h * this.speed;
+	};
+
+	this.reset = function(w, h) {
+		if(this.y > h) {
+			this.setParam(w, h);
+		}
+	}
+}
+
+
+function Light() {
+	this.setFlg = false;
+	this.x;
+	this.y;
+	this.raidus;
+	this.r;
+	this.g;
+	this.b;
+	this.a;
+
+	this.setParam = function(e) {
+		this.x = e.clientX;
+		this.y = e.clientY;
+		this.radius = 100;
+		if(typeof this.r === 'undefined') this.r = 255;
+		if(typeof this.g  === 'undefined') this.g = 255;
+		if(typeof this.b  === 'undefined') this.b = 200;
+		this.a = 0.5;
+		this.setFlg = true;
+	}
+
+	this.changeColor = function() {
+		this.r = Math.floor(Math.random() * 256);
+		this.g = Math.floor(Math.random() * 256);
+		this.b = Math.floor(Math.random() * 256);
+	}
+
+	this.draw = function(ctx) {
+		ctx.beginPath();
+		var grd = ctx.createRadialGradient(this.x, this.y, this.radius, this.x, this.y, this.radius / 100 );
+		grd.addColorStop(0, 'rgba(' + this.r + ', ' + this.g + ', ' + this.b + ', ' + this.a * 0.01 + ')');
+		grd.addColorStop(0.1, 'rgba(' + this.r + ', ' + this.g + ', ' + this.b + ', ' + this.a * 0.2 + ')');
+		grd.addColorStop(0.3, 'rgba(' + this.r + ', ' + this.g + ', ' + this.b + ', ' + this.a * 0.5 + ')');
+		grd.addColorStop(1, 'rgba(' + Math.floor(this.r * 1.2) + ', ' + Math.floor(this.g * 1.2) + ', ' + Math.floor(this.b * 1.2) + ', ' + this.a + ')');
+		ctx.fillStyle = grd;
+		ctx.lineWidth = 0;
+		ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2, true);
+		ctx.fill();
+	}
+
+}
+
+function Me() {
+	this.startx;
+	this.starty;
+	this.endx;
+	this.endy;
+	this.predistance;
+	this.mousedown;
+	this.mouseup;
+	this.drag;
+	this.onLightOverCheck = function(arrLight) {
+		for(var i = 0; i < arrLight.length; i++) {
+			var objLight = arrLight[i];
+			var dx = this.startx - objLight.x;
+			var dy = this.starty - objLight.y;
+			if(objLight.radius >= Math.sqrt((dx * dx) + (dy * dy))) {
+				onLightIndex = i;
+				return true;
+			}
+		}
+		return false;
+	}
+}
+
+</script>
+<script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js"></script>
+</head>
+<body>
+<canvas id="canvas"></canvas>
+</body>
+</html>
