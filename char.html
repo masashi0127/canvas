@@ -1,0 +1,168 @@
+<html>
+<head>
+<title>Insert title here</title>
+<style type="text/css">
+* {
+	margin: 0;
+	padding: 0;
+}
+</style>
+<script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js"></script>
+<script type="text/javascript">
+window.addEventListener('load', eventWindowLoaded, false);
+function eventWindowLoaded() {
+	canvasApp();
+}
+
+function canvasApp() {
+	var canvas = document.getElementById('canvas');
+	var ctx = canvas.getContext('2d');
+	var textbutton = document.getElementById('textbutton');
+	var w = document.body.clientWidth;
+	var h = document.body.clientHeight - 50;
+	var arrObjChara = new Array();
+	canvas.width = w;
+	canvas.height = h;
+	textbutton.addEventListener('click', division, false);
+	canvas.addEventListener('click', charaController, false);
+
+	box();
+
+	function division(e) {
+		var textchara = $("input#textfield").val();
+		var arrTextChara = textchara.split('');
+		for( var i = 0; i < arrTextChara.length; i++) {
+			var objChara = object(Chara);
+			objChara.chara = arrTextChara[i];
+			box();
+			objChara.setParam();
+			arrObjChara.push(objChara);
+		}
+		draw();
+	}
+
+	function draw() {
+		if(typeof arrObjChara !== 'undefined' && arrObjChara.length !== 0) {
+			for( var i = 0; i < arrObjChara.length; i++) {
+				var objChara = arrObjChara[i];
+				objChara.meDraw();
+			}
+		}
+	}
+
+	function box() {
+		ctx.fillStyle = '#DDDDDD';
+		ctx.fillRect(0, 0, w, h);
+	}
+
+	function charaController(e) {
+		for( var i = 0; i < arrObjChara.length; i++) {
+			var objChara = arrObjChara[i];
+			var px = objChara.x;
+			var nx = objChara.x + objChara.font_size;
+			var py = objChara.y;
+			var ny = objChara.y + objChara.font_size;
+			var cx = e.clientX;
+			var cy = e.clientY;
+			if(px <= cx && nx >= cx && py <= cy && ny >= cy) {
+				objChara.selected();
+			}
+		}
+	}
+
+	function drag(e) {
+		alert('ok');
+	}
+
+	var Chara = {
+			chara: '',
+			x:0,
+			y:0,
+			font_size: 30,
+			font_type: 'px monospace',
+			r: 0,
+			g: 0,
+			b: 0,
+			a: 0,
+
+			setParam: function() {
+				this.x = Math.floor(Math.random() * w);
+				this.y = Math.floor(Math.random() * h);
+				this.r = Math.floor(Math.random() * 256);
+				this.g = Math.floor(Math.random() * 256);
+				this.b = Math.floor(Math.random() * 256);
+				this.a = (1 + Math.floor(Math.random() * 10)) / 10;
+			},
+
+			meDraw: function() {
+				ctx.fillStyle = 'rgba(' + this.r + ', ' + this.g + ', ' + this.b + ', ' + this.a + ')';
+				ctx.font = this.font_size + this.font_type;
+				ctx.textBaseline = 'top';
+				this.measure = ctx.measureText(this.chara);
+				console.log(this.measure);
+				ctx.fillText(this.chara, this.x, this.y);
+			},
+
+			selected: function() {
+				this.topLeftPoint();
+				this.bottomLeftPoint();
+				this.topRightPoint();
+				this.bottomRightPoint();
+			},
+
+			topLeftPoint: function() {
+				ctx.strokeStyle = 'rgba(255, 0, 0, 1)';
+				var x = this.x - 5;
+				var y = this.y - 5;
+				ctx.strokeRect(x, y, 5, 5);
+			},
+
+			bottomLeftPoint: function() {
+				ctx.strokeStyle = 'rgba(255, 0, 0, 1)';
+				var cx = this.x;
+				var cy = this.y + this.font_size;
+				var x = cx - 5;
+				var y = cy;
+				ctx.strokeRect(x, y, 5, 5);
+			},
+
+			bottomRightPoint: function() {
+				ctx.strokeStyle = 'rgba(255, 0, 0, 1)';
+				var cx = this.x + this.measure.width;
+				var cy = this.y + this.font_size;
+				var x = cx;
+				var y = cy;
+				ctx.strokeRect(x, y, 5, 5);
+			},
+
+			topRightPoint: function() {
+				ctx.strokeStyle = 'rgba(255, 0, 0, 1)';
+				var cx = this.x + this.measure.width;
+				var cy = this.y;
+				var x = cx;
+				var y = cy - 5;
+				ctx.strokeRect(x, y, 5, 5);
+			}
+		}
+}
+
+function object(o) {
+  var f = object.f, i, len, n, prop;
+  f.prototype = o;
+  n = new f;
+  for (i=1, len=arguments.length; i<len; ++i)
+    for (prop in arguments[i])
+      n[prop] = arguments[i][prop];
+  return n;
+}
+object.f = function(){};
+</script>
+</head>
+<body>
+	<canvas id="canvas"></canvas>
+	<form>
+		<input type="text" id="textfield">
+		<input type="button" id="textbutton" value="SET">
+	</form>
+</body>
+</html>
