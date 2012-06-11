@@ -21,10 +21,15 @@ function canvasApp() {
 	var w = document.body.clientWidth;
 	var h = document.body.clientHeight - 50;
 	var arrObjChara = new Array();
+	var me = object(Me);
+	window.selectedChara;
+	window.resizeChara;
 	canvas.width = w;
 	canvas.height = h;
 	textbutton.addEventListener('click', division, false);
-	canvas.addEventListener('click', charaController, false);
+	canvas.addEventListener('mousedown', charaSelectd, false);
+	canvas.addEventListener('mousemove', charaDraging, false);
+	canvas.addEventListener('mouseup', charaDetached, false);
 
 	box();
 
@@ -55,19 +60,116 @@ function canvasApp() {
 		ctx.fillRect(0, 0, w, h);
 	}
 
-	function charaController(e) {
-		for( var i = 0; i < arrObjChara.length; i++) {
-			var objChara = arrObjChara[i];
-			var px = objChara.x;
-			var nx = objChara.x + objChara.font_size;
-			var py = objChara.y;
-			var ny = objChara.y + objChara.font_size;
-			var cx = e.clientX;
-			var cy = e.clientY;
-			if(px <= cx && nx >= cx && py <= cy && ny >= cy) {
-				objChara.selected();
+	function charaSelectd(e) {
+		me.down = true;
+		me.up = false;
+		var cx = e.clientX;
+		var cy = e.clientY;
+		box();
+		if (typeof selectedChara !== 'undefined') {
+			var coordinates = coordinate(selectedChara);
+			if (coordinates.px <= cx && coordinates.nx >= cx && coordinates.py <= cy && coordinates.ny >= cy) {
+				selectedChara.selected();
+				selectedChara.meDraw();
+			} else if (coordinates.tlpx <= cx && coordinates.tlnx >= cx && coordinates.tlpy <= cy && coordinates.tlny >= cy) {
+				selectedChara.resizing_flg = true;
+				selectedChara.selected();
+				selectedChara.meDraw();
+			} else if (coordinates.blpx <= cx && coordinates.blnx >= cx && coordinates.blpy <= cy && coordinates.blny >= cy) {
+				selectedChara.resizing_flg = true;
+				selectedChara.selected();
+				selectedChara.meDraw();
+			} else if (coordinates.brpx <= cx && coordinates.brnx >= cx && coordinates.brpy <= cy && coordinates.brny >= cy) {
+				selectedChara.resizing_flg = true;
+				selectedChara.selected();
+				selectedChara.meDraw();
+			} else if (coordinates.trpx <= cx && coordinates.trnx >= cx && coordinates.trpy <= cy && coordinates.trny >= cy) {
+				selectedChara.resizing_flg = true;
+				selectedChara.selected();
+				selectedChara.meDraw();
+			} else {
+				arrObjChara.push(selectedChara);
+				delete selectedChara;
 			}
 		}
+		for (var i = 0; i < arrObjChara.length; i++) {
+			var objChara = arrObjChara[i];
+			var px = objChara.x;
+			var nx = objChara.x + objChara.measure.width;
+			var py = objChara.y;
+			var ny = objChara.y + objChara.font_size;
+			if (px <= cx && nx >= cx && py <= cy && ny >= cy) {
+				selectedChara = objChara;
+				objChara.selected();
+				var del_idx = i;
+			}
+			objChara.meDraw();
+		}
+		if(typeof del_idx !== 'undefined') arrObjChara.splice(del_idx, 1);
+	}
+
+	function charaDraging(e) {
+		if(me.down === true && me.up === false) {
+			box();
+			var cx = e.clientX;
+			var cy = e.clientY;
+			if (typeof selectedChara !== 'undefined') {
+				if(selectedChara.resizing_flg) {
+					selectedChara.resized(cx, cy);
+				} else {
+					selectedChara.moved(cx, cy);
+					selectedChara.meDraw();
+				}
+				selectedChara.meDraw();
+				for(var i = 0; i < arrObjChara.length; i++) {
+					var objChara = arrObjChara[i];
+					objChara.meDraw();
+				}
+			} else {
+				for (var i = 0; i < arrObjChara.length; i++) {
+					var objChara = arrObjChara[i];
+					var coordinates = coordinate(objChara);
+					if (coordinates.px <= cx && coordinates.nx >= cx && coordinates.py <= cy && coordinates.ny >= cy) {
+						selectedChara = objChara;
+						arrObjChara.splice(i, 1);
+					}
+					objChara.meDraw();
+				}
+			}
+		}
+	}
+
+	function coordinate(objChara) {
+		var coordinates = {
+			px: objChara.x,
+			nx: objChara.x + objChara.measure.width,
+			py: objChara.y,
+			ny: objChara.y + objChara.font_size,
+			tlpx: objChara.top_left_x,
+			tlpy: objChara.top_left_y,
+			tlnx: objChara.top_left_x + objChara.point_side_length,
+			tlny: objChara.top_left_y + objChara.point_side_length,
+			blpx: objChara.bottom_left_x,
+			blpy: objChara.bottom_left_y,
+			blnx: objChara.bottom_left_x + objChara.point_side_length,
+			blny: objChara.bottom_left_y + objChara.point_side_length,
+			brpx: objChara.bottom_right_x,
+			brpy: objChara.bottom_right_y,
+			brnx: objChara.bottom_right_x + objChara.point_side_length,
+			brny: objChara.bottom_right_y + objChara.point_side_length,
+			trpx: objChara.top_right_x,
+			trpy: objChara.top_right_y,
+			trnx: objChara.top_right_x + objChara.point_side_length,
+			trny: objChara.top_right_y + objChara.point_side_length
+		};
+
+		return coordinates;
+	}
+
+	function charaDetached(e) {
+		if(typeof selectedChara !== 'undefined' && selectedChara.resizing_flg) selectedChara.resizing_flg = false;
+		me.down = false;
+		me.up = true;
 	}
 
 	function drag(e) {
@@ -75,85 +177,123 @@ function canvasApp() {
 	}
 
 	var Chara = {
-			chara: '',
-			x:0,
-			y:0,
-			font_size: 30,
-			font_type: 'px monospace',
-			r: 0,
-			g: 0,
-			b: 0,
-			a: 0,
+		chara: '',
+		x:0,
+		y:0,
+		top_left_x: 0,
+		top_left_y: 0,
+		bottom_left_x: 0,
+		bottom_left_y: 0,
+		bottom_right_x: 0,
+		bottom_right_y: 0,
+		top_right_x: 0,
+		top_right_y: 0,
+		font_size: 30,
+		point_side_length: 6,
+		font_type: 'px monospace',
+		measure: 0,
+		resizing_flg: false,
+		r: 0,
+		g: 0,
+		b: 0,
+		a: 0,
 
-			setParam: function() {
-				this.x = Math.floor(Math.random() * w);
-				this.y = Math.floor(Math.random() * h);
-				this.r = Math.floor(Math.random() * 256);
-				this.g = Math.floor(Math.random() * 256);
-				this.b = Math.floor(Math.random() * 256);
-				this.a = (1 + Math.floor(Math.random() * 10)) / 10;
-			},
+		setParam: function() {
+			this.x = Math.floor(Math.random() * w);
+			this.y = Math.floor(Math.random() * h);
+			this.r = Math.floor(Math.random() * 256);
+			this.g = Math.floor(Math.random() * 256);
+			this.b = Math.floor(Math.random() * 256);
+			this.a = (1 + Math.floor(Math.random() * 10)) / 10;
+		},
 
-			meDraw: function() {
-				ctx.fillStyle = 'rgba(' + this.r + ', ' + this.g + ', ' + this.b + ', ' + this.a + ')';
-				ctx.font = this.font_size + this.font_type;
-				ctx.textBaseline = 'top';
-				this.measure = ctx.measureText(this.chara);
-				console.log(this.measure);
-				ctx.fillText(this.chara, this.x, this.y);
-			},
+		meDraw: function() {
+			ctx.fillStyle = 'rgba(' + this.r + ', ' + this.g + ', ' + this.b + ', ' + this.a + ')';
+			ctx.font = this.font_size + this.font_type;
+			ctx.textBaseline = 'top';
+			this.measure = ctx.measureText(this.chara);
+			ctx.fillText(this.chara, this.x, this.y);
+		},
 
-			selected: function() {
-				this.topLeftPoint();
-				this.bottomLeftPoint();
-				this.topRightPoint();
-				this.bottomRightPoint();
-			},
+		selected: function() {
+			this.topLeftPoint();
+			this.bottomLeftPoint();
+			this.topRightPoint();
+			this.bottomRightPoint();
+		},
 
-			topLeftPoint: function() {
-				ctx.strokeStyle = 'rgba(255, 0, 0, 1)';
-				var x = this.x - 5;
-				var y = this.y - 5;
-				ctx.strokeRect(x, y, 5, 5);
-			},
+		topLeftPoint: function() {
+			ctx.strokeStyle = 'rgba(255, 0, 0, 1)';
+			var x = this.x - this.point_side_length;
+			var y = this.y - this.point_side_length;
+			this.top_left_x = x;
+			this.top_left_y = y;
+			ctx.strokeRect(x, y, this.point_side_length, this.point_side_length);
+		},
 
-			bottomLeftPoint: function() {
-				ctx.strokeStyle = 'rgba(255, 0, 0, 1)';
-				var cx = this.x;
-				var cy = this.y + this.font_size;
-				var x = cx - 5;
-				var y = cy;
-				ctx.strokeRect(x, y, 5, 5);
-			},
+		bottomLeftPoint: function() {
+			ctx.strokeStyle = 'rgba(255, 0, 0, 1)';
+			var cx = this.x;
+			var cy = this.y + this.font_size;
+			var x = cx - this.point_side_length;
+			var y = cy;
+			this.bottom_left_x = x;
+			this.bottom_left_y = y;
+			ctx.strokeRect(x, y, this.point_side_length, this.point_side_length);
+		},
 
-			bottomRightPoint: function() {
-				ctx.strokeStyle = 'rgba(255, 0, 0, 1)';
-				var cx = this.x + this.measure.width;
-				var cy = this.y + this.font_size;
-				var x = cx;
-				var y = cy;
-				ctx.strokeRect(x, y, 5, 5);
-			},
+		bottomRightPoint: function() {
+			ctx.strokeStyle = 'rgba(255, 0, 0, 1)';
+			var cx = this.x + this.measure.width;
+			var cy = this.y + this.font_size;
+			var x = cx;
+			var y = cy;
+			this.bottom_right_x = x;
+			this.bottom_right_y = y;
+			ctx.strokeRect(x, y, this.point_side_length, this.point_side_length);
+		},
 
-			topRightPoint: function() {
-				ctx.strokeStyle = 'rgba(255, 0, 0, 1)';
-				var cx = this.x + this.measure.width;
-				var cy = this.y;
-				var x = cx;
-				var y = cy - 5;
-				ctx.strokeRect(x, y, 5, 5);
-			}
+		topRightPoint: function() {
+			ctx.strokeStyle = 'rgba(255, 0, 0, 1)';
+			var cx = this.x + this.measure.width;
+			var cy = this.y;
+			var x = cx;
+			var y = cy - this.point_side_length;
+			this.top_right_x = x;
+			this.top_right_y = y;
+			ctx.strokeRect(x, y, this.point_side_length, this.point_side_length);
+		},
+
+		moved: function(x, y) {
+			this.x = x - this.measure.width / 2;
+			this.y = y - this.font_size / 2;
+			this.selected();
+		},
+
+		resized: function(cx, cy) {
+			var parsent =  (cx - this.x) / this.measure.width;
+			//var x = cx - (this.x + this.measure.width / 2);
+			//var y = cy - (this.y + this.font_size / 2);
+			//this.font_size = Math.sqrt(x * x + y * y) / 2;
+			this.font_size *= parsent;
+			this.selected();
 		}
+	};
+
+	var Me = {
+		down: false,
+		up: true
+	};
 }
 
 function object(o) {
-  var f = object.f, i, len, n, prop;
-  f.prototype = o;
-  n = new f;
-  for (i=1, len=arguments.length; i<len; ++i)
-    for (prop in arguments[i])
-      n[prop] = arguments[i][prop];
-  return n;
+	var f = object.f, i, len, n, prop;
+	f.prototype = o;
+	n = new f;
+	for (i=1, len=arguments.length; i<len; ++i)
+	for (prop in arguments[i])
+	n[prop] = arguments[i][prop];
+	return n;
 }
 object.f = function(){};
 </script>
