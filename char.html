@@ -69,26 +69,18 @@ function canvasApp() {
 		if (typeof selectedChara !== 'undefined') {
 			var coordinates = coordinate(selectedChara);
 			if (coordinates.px <= cx && coordinates.nx >= cx && coordinates.py <= cy && coordinates.ny >= cy) {
-				selectedChara.selected();
+				selectedChara.selected(cx, cy);
 				selectedChara.meDraw();
 			} else if (coordinates.tlpx <= cx && coordinates.tlnx >= cx && coordinates.tlpy <= cy && coordinates.tlny >= cy) {
-				selectedChara.resizing_flg = true;
-				selectedChara.selected();
-				selectedChara.meDraw();
+				selectedChara.setSelectedParam('tl', cx, cy);
 			} else if (coordinates.blpx <= cx && coordinates.blnx >= cx && coordinates.blpy <= cy && coordinates.blny >= cy) {
-				selectedChara.resizing_flg = true;
-				selectedChara.selected();
-				selectedChara.meDraw();
+				selectedChara.setSelectedParam('bl', cx, cy);
 			} else if (coordinates.brpx <= cx && coordinates.brnx >= cx && coordinates.brpy <= cy && coordinates.brny >= cy) {
-				selectedChara.resizing_flg = true;
-				selectedChara.selected();
-				selectedChara.meDraw();
-			} else if (coordinates.trpx <= cx && coordinates.trnx >= cx && coordinates.trpy <= cy && coordinates.trny >= cy) {
-				selectedChara.resizing_flg = true;
-				selectedChara.selected();
-				selectedChara.meDraw();
+				selectedChara.setSelectedParam('br', cx, cy);
+			} else if(coordinates.trpx <= cx && coordinates.trnx >= cx && coordinates.trpy <= cy && coordinates.trny >= cy) {
+				selectedChara.setSelectedParam('tr', cx, cy);
 			} else {
-				arrObjChara.push(selectedChara);
+				arrObjChara.unshift(selectedChara);
 				delete selectedChara;
 			}
 		}
@@ -98,9 +90,9 @@ function canvasApp() {
 			var nx = objChara.x + objChara.measure.width;
 			var py = objChara.y;
 			var ny = objChara.y + objChara.font_size;
-			if (px <= cx && nx >= cx && py <= cy && ny >= cy) {
+			if (typeof selectedChara === 'undefined' && px <= cx && nx >= cx && py <= cy && ny >= cy) {
 				selectedChara = objChara;
-				objChara.selected();
+				selectedChara.selected(cx, cy);
 				var del_idx = i;
 			}
 			objChara.meDraw();
@@ -109,18 +101,22 @@ function canvasApp() {
 	}
 
 	function charaDraging(e) {
-		if(me.down === true && me.up === false) {
+		if(typeof selectedChara !== 'undefined' && me.down === true && me.up === false) {
 			box();
 			var cx = e.clientX;
 			var cy = e.clientY;
 			if (typeof selectedChara !== 'undefined') {
-				if(selectedChara.resizing_flg) {
+				if (selectedChara.resizing_flg) {
 					selectedChara.resized(cx, cy);
+					selectedChara.resizeDraw();
+					selectedChara.selected(cx, cy);
+					selectedChara.translateChange();
+					ctx.translate(-1 * selectedChara.trans_x, -1 * selectedChara.trans_y);
 				} else {
 					selectedChara.moved(cx, cy);
 					selectedChara.meDraw();
+					selectedChara.selected(cx, cy);
 				}
-				selectedChara.meDraw();
 				for(var i = 0; i < arrObjChara.length; i++) {
 					var objChara = arrObjChara[i];
 					objChara.meDraw();
@@ -167,7 +163,10 @@ function canvasApp() {
 	}
 
 	function charaDetached(e) {
-		if(typeof selectedChara !== 'undefined' && selectedChara.resizing_flg) selectedChara.resizing_flg = false;
+		if (typeof selectedChara !== 'undefined' && selectedChara.resizing_flg) {
+			selectedChara.resizing_flg = false;
+			selectedChara.resizeEnd();
+		}
 		me.down = false;
 		me.up = true;
 	}
@@ -180,6 +179,10 @@ function canvasApp() {
 		chara: '',
 		x:0,
 		y:0,
+		pre_x: 0,
+		pre_y: 0,
+		trans_x: 0,
+		trans_y: 0,
 		top_left_x: 0,
 		top_left_y: 0,
 		bottom_left_x: 0,
@@ -189,10 +192,13 @@ function canvasApp() {
 		top_right_x: 0,
 		top_right_y: 0,
 		font_size: 30,
-		point_side_length: 6,
+		start_font_size: 30,
+		point_side_length: 10,
 		font_type: 'px monospace',
 		measure: 0,
+		start_measure: 0,
 		resizing_flg: false,
+		resize_type: '',
 		r: 0,
 		g: 0,
 		b: 0,
@@ -212,14 +218,17 @@ function canvasApp() {
 			ctx.font = this.font_size + this.font_type;
 			ctx.textBaseline = 'top';
 			this.measure = ctx.measureText(this.chara);
+			this.start_measure = this.measure;
 			ctx.fillText(this.chara, this.x, this.y);
 		},
 
-		selected: function() {
+		selected: function(cx, cy) {
 			this.topLeftPoint();
 			this.bottomLeftPoint();
 			this.topRightPoint();
 			this.bottomRightPoint();
+			this.pre_x = cx;
+			this.pre_y = cy;
 		},
 
 		topLeftPoint: function() {
@@ -264,19 +273,59 @@ function canvasApp() {
 			ctx.strokeRect(x, y, this.point_side_length, this.point_side_length);
 		},
 
-		moved: function(x, y) {
-			this.x = x - this.measure.width / 2;
-			this.y = y - this.font_size / 2;
-			this.selected();
+		setSelectedParam: function(resize_type, cx, cy) {
+			this.resize_type = resize_type;
+			this.resizing_flg = true;
+			this.selected(cx, cy);
+			this.meDraw();
+		},
+
+		moved: function(cx, cy) {
+			this.x += cx - this.pre_x;
+			this.y += cy - this.pre_y;
 		},
 
 		resized: function(cx, cy) {
-			var parsent =  (cx - this.x) / this.measure.width;
-			//var x = cx - (this.x + this.measure.width / 2);
-			//var y = cy - (this.y + this.font_size / 2);
-			//this.font_size = Math.sqrt(x * x + y * y) / 2;
+			if(this.resize_type === 'tl' || this.resize_type === 'bl') {
+				var parsent =  (this.x - cx + this.start_measure.width) / this.measure.width;
+			} else {
+				var parsent =  (cx - this.x) / this.measure.width;
+			}
+			this.pre_font_size = this.font_size;
 			this.font_size *= parsent;
-			this.selected();
+			if(this.font_size < 1) this.font_size = 1;
+		},
+
+		resizeDraw: function() {
+			ctx.fillStyle = 'rgba(' + this.r + ', ' + this.g + ', ' + this.b + ', ' + this.a + ')';
+			ctx.font = this.font_size + this.font_type;
+			ctx.textBaseline = 'top';
+			this.measure = ctx.measureText(this.chara);
+			this.translateChange();
+			ctx.translate(this.trans_x, this.trans_y);
+			ctx.fillText(this.chara, this.x, this.y);
+		},
+
+		translateChange: function() {
+			if (this.resize_type === 'tl') {
+				this.trans_x = this.start_measure.width - this.measure.width;
+				this.trans_y = this.start_font_size - this.font_size;
+			} else if (this.resize_type === 'bl') {
+				this.trans_x = this.start_measure.width - this.measure.width;
+				this.trans_y = 0;
+			} else if (this.resize_type === 'br') {
+				this.trans_x = 0;
+				this.trans_y = 0;
+			} else if (this.resize_type === 'tr') {
+				this.trans_x = 0;
+				this.trans_y = this.start_font_size - this.font_size;
+			}
+		},
+
+		resizeEnd: function() {
+			this.x += this.trans_x;
+			this.y += this.trans_y;
+			this.start_font_size = this.font_size;
 		}
 	};
 
