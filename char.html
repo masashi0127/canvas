@@ -79,6 +79,8 @@ function canvasApp() {
 				selectedChara.setSelectedParam('br', cx, cy);
 			} else if(coordinates.trpx <= cx && coordinates.trnx >= cx && coordinates.trpy <= cy && coordinates.trny >= cy) {
 				selectedChara.setSelectedParam('tr', cx, cy);
+			} else if(selectedChara.rotateCheck(cx, cy)) {
+				selectedChara.setSelectedParam('rt', cx, cy);
 			} else {
 				arrObjChara.unshift(selectedChara);
 				delete selectedChara;
@@ -112,6 +114,9 @@ function canvasApp() {
 					selectedChara.selected(cx, cy);
 					selectedChara.translateChange();
 					ctx.translate(-1 * selectedChara.trans_x, -1 * selectedChara.trans_y);
+				} else if (selectedChara.rotate_flg) {
+					selectedChara.rotateDraw();
+					selectedChara.selected(cx, cy);
 				} else {
 					selectedChara.moved(cx, cy);
 					selectedChara.meDraw();
@@ -156,16 +161,30 @@ function canvasApp() {
 			trpx: objChara.top_right_x,
 			trpy: objChara.top_right_y,
 			trnx: objChara.top_right_x + objChara.point_side_length,
-			trny: objChara.top_right_y + objChara.point_side_length
+			trny: objChara.top_right_y + objChara.point_side_length,
 		};
 
 		return coordinates;
 	}
 
 	function charaDetached(e) {
-		if (typeof selectedChara !== 'undefined' && selectedChara.resizing_flg) {
-			selectedChara.resizing_flg = false;
-			selectedChara.resizeEnd();
+		var cx = e.clientX;
+		var cy = e.clientY;
+		box();
+		if (typeof selectedChara !== 'undefined') {
+			if (selectedChara.resizing_flg) {
+				selectedChara.resizing_flg = false;
+				selectedChara.resizeEnd();
+			} else if (selectedChara.rotate_flg) {
+				selectedChara.rotate_flg = false;
+				selectedChara.resizeEnd();
+			}
+			selectedChara.selected();
+			selectedChara.meDraw();
+		}
+		for (var i = 0; i < arrObjChara.length; i++) {
+			var objChara = arrObjChara[i];
+			objChara.meDraw();
 		}
 		me.down = false;
 		me.up = true;
@@ -191,6 +210,9 @@ function canvasApp() {
 		bottom_right_y: 0,
 		top_right_x: 0,
 		top_right_y: 0,
+		rotate_x: 0,
+		rotate_y: 0,
+		rotate_radius: 5,
 		font_size: 30,
 		start_font_size: 30,
 		point_side_length: 10,
@@ -198,7 +220,8 @@ function canvasApp() {
 		measure: 0,
 		start_measure: 0,
 		resizing_flg: false,
-		resize_type: '',
+		rotate_flg: false,
+		select_type: '',
 		r: 0,
 		g: 0,
 		b: 0,
@@ -227,6 +250,7 @@ function canvasApp() {
 			this.bottomLeftPoint();
 			this.topRightPoint();
 			this.bottomRightPoint();
+			this.rotatePoint();
 			this.pre_x = cx;
 			this.pre_y = cy;
 		},
@@ -273,9 +297,30 @@ function canvasApp() {
 			ctx.strokeRect(x, y, this.point_side_length, this.point_side_length);
 		},
 
-		setSelectedParam: function(resize_type, cx, cy) {
-			this.resize_type = resize_type;
-			this.resizing_flg = true;
+		rotatePoint: function() {
+			this.rotate_x = this.top_right_x + this.point_side_length + this.rotate_radius / 2 + 1;
+			this.rotate_y = this.top_right_y - this.rotate_radius / 2 - 1;
+			ctx.beginPath();
+			ctx.fillStyle = 'rgba(255, 0, 0, 1)';
+			ctx.lineWidth = 0;
+			ctx.arc(this.rotate_x, this.rotate_y, this.rotate_radius, 0, Math.PI * 2, true);
+			ctx.fill();
+		},
+
+		rotateCheck: function(cx, cy) {
+			var x = this.rotate_x - cx;
+			var y = this.rotate_y - cy;
+			if(Math.sqrt(x * x + y * y) <= this.rotate_radius) return true;
+			return false;
+		},
+
+		setSelectedParam: function(select_type, cx, cy) {
+			this.select_type = select_type;
+			if(select_type !== 'rt') {
+				this.resizing_flg = true;
+			} else {
+				this.rotate_flg = true;
+			}
 			this.selected(cx, cy);
 			this.meDraw();
 		},
@@ -286,7 +331,7 @@ function canvasApp() {
 		},
 
 		resized: function(cx, cy) {
-			if(this.resize_type === 'tl' || this.resize_type === 'bl') {
+			if(this.select_type === 'tl' || this.select_type === 'bl') {
 				var parsent =  (this.x - cx + this.start_measure.width) / this.measure.width;
 			} else {
 				var parsent =  (cx - this.x) / this.measure.width;
@@ -306,17 +351,21 @@ function canvasApp() {
 			ctx.fillText(this.chara, this.x, this.y);
 		},
 
+		rotateDraw: function() {
+
+		},
+
 		translateChange: function() {
-			if (this.resize_type === 'tl') {
+			if (this.select_type === 'tl') {
 				this.trans_x = this.start_measure.width - this.measure.width;
 				this.trans_y = this.start_font_size - this.font_size;
-			} else if (this.resize_type === 'bl') {
+			} else if (this.select_type === 'bl') {
 				this.trans_x = this.start_measure.width - this.measure.width;
 				this.trans_y = 0;
-			} else if (this.resize_type === 'br') {
+			} else if (this.select_type === 'br') {
 				this.trans_x = 0;
 				this.trans_y = 0;
-			} else if (this.resize_type === 'tr') {
+			} else if (this.select_type === 'tr') {
 				this.trans_x = 0;
 				this.trans_y = this.start_font_size - this.font_size;
 			}
@@ -325,6 +374,8 @@ function canvasApp() {
 		resizeEnd: function() {
 			this.x += this.trans_x;
 			this.y += this.trans_y;
+			this.trans_x = 0;
+			this.trans_y = 0;
 			this.start_font_size = this.font_size;
 		}
 	};
