@@ -69,8 +69,7 @@ function canvasApp() {
 		if (typeof selectedChara !== 'undefined') {
 			var coordinates = coordinate(selectedChara);
 			if (coordinates.px <= cx && coordinates.nx >= cx && coordinates.py <= cy && coordinates.ny >= cy) {
-				selectedChara.selected(cx, cy);
-				selectedChara.meDraw();
+				selectedChara.rotateRestore(true, cx, cy);
 			} else if (coordinates.tlpx <= cx && coordinates.tlnx >= cx && coordinates.tlpy <= cy && coordinates.tlny >= cy) {
 				selectedChara.setSelectedParam('tl', cx, cy);
 			} else if (coordinates.blpx <= cx && coordinates.blnx >= cx && coordinates.blpy <= cy && coordinates.blny >= cy) {
@@ -94,10 +93,11 @@ function canvasApp() {
 			var ny = objChara.y + objChara.font_size;
 			if (typeof selectedChara === 'undefined' && px <= cx && nx >= cx && py <= cy && ny >= cy) {
 				selectedChara = objChara;
-				selectedChara.selected(cx, cy);
+				selectedChara.rotateRestore(true , cx, cy);
 				var del_idx = i;
+			} else {
+				objChara.rotateRestore(false , cx, cy);
 			}
-			objChara.meDraw();
 		}
 		if(typeof del_idx !== 'undefined') arrObjChara.splice(del_idx, 1);
 	}
@@ -115,8 +115,11 @@ function canvasApp() {
 					selectedChara.translateChange();
 					ctx.translate(-1 * selectedChara.trans_x, -1 * selectedChara.trans_y);
 				} else if (selectedChara.rotate_flg) {
-					selectedChara.rotateDraw();
+					ctx.save();
+					selectedChara.rotated(cx, cy);
+					selectedChara.rotateDraw(cx, cy);
 					selectedChara.selected(cx, cy);
+					ctx.restore();
 				} else {
 					selectedChara.moved(cx, cy);
 					selectedChara.meDraw();
@@ -175,31 +178,49 @@ function canvasApp() {
 			if (selectedChara.resizing_flg) {
 				selectedChara.resizing_flg = false;
 				selectedChara.resizeEnd();
+				selectedChara.selected(cx, cy);
+				selectedChara.meDraw();
 			} else if (selectedChara.rotate_flg) {
 				selectedChara.rotate_flg = false;
-				selectedChara.resizeEnd();
+				ctx.save();
+				selectedChara.trans_x = 0;
+				selectedChara.trans_y = 0;
+				selectedChara.rotated(cx, cy);
+				selectedChara.rotateDraw(cx, cy);
+				selectedChara.selected(cx, cy);
+				ctx.restore();
+			} else {
+				if(selectedChara.angle === 0) {
+					selectedChara.selected(cx, cy);
+					selectedChara.meDraw();
+				} else {
+					ctx.save();
+					selectedChara.rotated(cx, cy);
+					selectedChara.rotateDraw(cx, cy);
+					selectedChara.selected(cx, cy);
+					ctx.restore();
+				}
 			}
-			selectedChara.selected();
-			selectedChara.meDraw();
 		}
 		for (var i = 0; i < arrObjChara.length; i++) {
 			var objChara = arrObjChara[i];
-			objChara.meDraw();
+			if(objChara.angle === 0) {
+				objChara.meDraw();
+			} else {
+				ctx.save();
+				objChara.rotated(cx, cy);
+				objChara.rotateDraw(cx, cy);
+				ctx.restore();
+			}
 		}
 		me.down = false;
 		me.up = true;
-	}
-
-	function drag(e) {
-		alert('ok');
 	}
 
 	var Chara = {
 		chara: '',
 		x:0,
 		y:0,
-		pre_x: 0,
-		pre_y: 0,
 		trans_x: 0,
 		trans_y: 0,
 		top_left_x: 0,
@@ -222,6 +243,7 @@ function canvasApp() {
 		resizing_flg: false,
 		rotate_flg: false,
 		select_type: '',
+		angle: 0,
 		r: 0,
 		g: 0,
 		b: 0,
@@ -251,8 +273,8 @@ function canvasApp() {
 			this.topRightPoint();
 			this.bottomRightPoint();
 			this.rotatePoint();
-			this.pre_x = cx;
-			this.pre_y = cy;
+			me.pre_x = cx;
+			me.pre_y = cy;
 		},
 
 		topLeftPoint: function() {
@@ -326,8 +348,8 @@ function canvasApp() {
 		},
 
 		moved: function(cx, cy) {
-			this.x += cx - this.pre_x;
-			this.y += cy - this.pre_y;
+			this.x += cx - me.pre_x;
+			this.y += cy - me.pre_y;
 		},
 
 		resized: function(cx, cy) {
@@ -351,8 +373,62 @@ function canvasApp() {
 			ctx.fillText(this.chara, this.x, this.y);
 		},
 
-		rotateDraw: function() {
+		rotated: function(cx, cy) {
+			this.trans_x = this.x + this.measure.width / 2;
+			this.trans_y = this.y + this.font_size / 2;
+/*
+			var vx1 = me.pre_x - this.trans_x;
+			var vy1 = me.pre_y - this.trans_y;
+			var vx2 = cx - this.trans_x;
+			var vy2 = cy - this.trans_y;
+*/
+			if(this.trans_x > me.pre_x) {
+				var vx1 = this.trans_x - me.pre_x;
+			} else {
+				var vx1 = me.pre_x - this.trans_x;
+			}
+			if(this.trans_y > me.pre_y) {
+				var vy1 = this.trans_y - me.pre_y;
+			} else {
+				var vy1 = me.pre_y - this.trans_y;
+			}
+			if(cx > this.trans_x) {
+				var vx2 = cx - this.trans_x;
+			} else {
+				var vx2 = this.trans_x - cx;
+			}
+			if(cy > this.trans_y) {
+				var vy2 = cy - this.trans_y;
+			} else {
+				var vy2 = this.trans_y - cy;
+			}
 
+			var cos = (vx1 * vy1 + vx2 * vy2) / Math.sqrt((vx1 * vx1 + vy1 * vy1) * (vx2 * vx2 + vy2 * vy2));
+			this.angle += Math.acos(cos * Math.PI / 180);
+			if(this.angle > 360) this.angle - 360;
+			ctx.translate(this.trans_x, this.trans_y);
+			ctx.rotate(this.angle * Math.PI / 180);
+			ctx.translate(-1 * this.trans_x, -1 * this.trans_y);
+		},
+
+		rotateDraw: function() {
+			ctx.fillStyle = 'rgba(' + this.r + ', ' + this.g + ', ' + this.b + ', ' + this.a + ')';
+			ctx.font = this.font_size + this.font_type;
+			ctx.textBaseline = 'top';
+			this.measure = ctx.measureText(this.chara);
+			ctx.fillText(this.chara, this.x, this.y);
+		},
+
+		rotateRestore: function(selected, cx, cy) {
+			ctx.save();
+			if(this.angle === 0) {
+				this.meDraw();
+			} else {
+				this.rotated(cx, cy);
+				this.rotateDraw(cx, cy);
+			}
+			if(selected) this.selected(cx, cy);
+			ctx.restore();
 		},
 
 		translateChange: function() {
@@ -377,12 +453,20 @@ function canvasApp() {
 			this.trans_x = 0;
 			this.trans_y = 0;
 			this.start_font_size = this.font_size;
+		},
+
+		rotateEnd: function() {
+			ctx.save();
+			this.rotateDraw();
+			ctx.restore();
 		}
 	};
 
 	var Me = {
 		down: false,
-		up: true
+		up: true,
+		pre_x: 0,
+		pre_y: 0
 	};
 }
 
