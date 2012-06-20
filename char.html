@@ -78,7 +78,7 @@ function canvasApp() {
 				selectedChara.setSelectedParam('tr', cx, cy);
 			} else if(me.rotatePositionCheck(cx, cy, coordinates.trpx, coordinates.trpy, selectedChara.resize_point_radius, selectedChara.rotate_point_radius)) {
 				selectedChara.rotate_flg = true;
-				selectedChara.rotateRestore(true, cx, cy);
+				selectedChara.rotateRestore(cx, cy, true);
 			} else {
 				arrObjChara.unshift(selectedChara);
 				delete selectedChara;
@@ -90,10 +90,9 @@ function canvasApp() {
 			if (typeof selectedChara === 'undefined' && coordinates.px <= cx && coordinates.nx >= cx && coordinates.py <= cy && coordinates.ny >= cy) {
 				var del_idx = i;
 				selectedChara = objChara;
-				selectedChara.rotateRestore(true, cx, cy);
-				selectedChara.rotate_flg = false;
+				selectedChara.rotateRestore(cx, cy, true);
 			} else {
-				objChara.rotateRestore(false, cx, cy);
+				objChara.rotateRestore(cx, cy, false);
 			}
 		}
 		if(typeof del_idx !== 'undefined') arrObjChara.splice(del_idx, 1);
@@ -108,36 +107,20 @@ function canvasApp() {
 			if (typeof selectedChara !== 'undefined') {
 				if (selectedChara.resizing_flg) {
 					selectedChara.resized(cx, cy);
-					selectedChara.resizeDraw();
-					selectedChara.selected(cx, cy);
-					selectedChara.translateChange();
-					ctx.translate(-1 * selectedChara.trans_x, -1 * selectedChara.trans_y);
+					selectedChara.resizeDraw(cx, cy);
 				} else if (selectedChara.rotate_flg) {
-					ctx.save();
-					selectedChara.rotated(cx, cy);
-					selectedChara.rotateDraw(cx, cy);
-					selectedChara.selected(cx, cy);
-					ctx.restore();
+					selectedChara.rotateRestore(cx, cy, true);
 				} else {
-					ctx.save();
 					selectedChara.moved(cx, cy);
-					selectedChara.rotateRestore(true, cx, cy);
-					selectedChara.rotate_flg = false;
-					ctx.restore();
+					selectedChara.rotateRestore(cx, cy, true);
 				}
 				for(var i = 0; i < arrObjChara.length; i++) {
 					var objChara = arrObjChara[i];
-					objChara.meDraw();
-				}
-			} else {
-				for (var i = 0; i < arrObjChara.length; i++) {
-					var objChara = arrObjChara[i];
-					var coordinates = coordinate(objChara);
-					if (typeof selectedChara === 'undefined' && coordinates.px <= cx && coordinates.nx >= cx && coordinates.py <= cy && coordinates.ny >= cy) {
-						selectedChara = objChara;
-						arrObjChara.splice(i, 1);
+					if(objChara.angle !== 0) {
+						objChara.rotateRestore(cx, cy, false);
+					} else {
+						objChara.meDraw();
 					}
-					objChara.meDraw();
 				}
 			}
 		} else {
@@ -153,7 +136,7 @@ function canvasApp() {
 					document.body.style.cursor = "se-resize";
 				} else if(me.resizePositionCheck(cx, cy, coordinates.trpx, coordinates.trpy, selectedChara.resize_point_radius)) {
 					document.body.style.cursor = "ne-resize";
-				} else if(coordinates.px <= cx && coordinates.nx >= cx && coordinates.py <= cy && coordinates.ny >= cy){
+				} else if(me.movePositionCheck(cx, cy, coordinates.tlpx, coordinates.tlpy, coordinates.blpx, coordinates.blpy, coordinates.brpx, coordinates.brpy, coordinates.trpx, coordinates.trpy)) {
 					document.body.style.cursor = "move";
 				} else if(me.rotatePositionCheck(cx, cy, coordinates.trpx, coordinates.trpy, selectedChara.resize_point_radius, selectedChara.rotate_point_radius)) {
 					document.body.style.cursor = "progress";
@@ -185,27 +168,23 @@ function canvasApp() {
 	function charaDetached(e) {
 		var cx = e.clientX;
 		var cy = e.clientY;
+		me.down = false;
+		me.up = true;
+		me.drag = false;
 		box();
 		if (typeof selectedChara !== 'undefined') {
 			if (selectedChara.resizing_flg) {
 				selectedChara.resizeEnd();
-				selectedChara.selected(cx, cy);
-				selectedChara.meDraw();
-			} else if(selectedChara.rotate_flg) {
-				selectedChara.rotateRestore(true, cx, cy);
-				selectedChara.allEnd();
+				selectedChara.rotateRestore(cx, cy, true);
 			} else {
-				selectedChara.rotateRestore(true, cx, cy);
-				selectedChara.allEnd();
+				selectedChara.rotateRestore(cx, cy, true);
 			}
+			selectedChara.allEnd();
 		}
 		for (var i = 0; i < arrObjChara.length; i++) {
 			var objChara = arrObjChara[i];
-			objChara.rotateRestore(false, cx, cy);
+			objChara.rotateRestore(cx, cy, false);
 		}
-		me.down = false;
-		me.up = true;
-		me.drag = false;
 	}
 
 	var Chara = {
@@ -329,8 +308,7 @@ function canvasApp() {
 		setSelectedParam: function(select_type, cx, cy) {
 			this.select_type = select_type;
 			if(select_type !== 'rt') this.resizing_flg = true;
-			this.selected(cx, cy);
-			this.meDraw();
+			this.rotateRestore(cx, cy, true);
 		},
 
 		moved: function(cx, cy) {
@@ -341,8 +319,10 @@ function canvasApp() {
 		},
 
 		resized: function(cx, cy) {
+			console.log(this.select_type);
 			if(this.select_type === 'tl' || this.select_type === 'bl') {
 				var parsent =  (this.x - cx + this.start_measure.width) / this.measure.width;
+				console.log(parsent);
 			} else {
 				var parsent =  (cx - this.x) / this.measure.width;
 			}
@@ -351,25 +331,38 @@ function canvasApp() {
 			if(this.font_size < 1) this.font_size = 1;
 		},
 
-		resizeDraw: function() {
+		resizeDraw: function(cx, cy) {
 			ctx.fillStyle = 'rgba(' + this.r + ', ' + this.g + ', ' + this.b + ', ' + this.a + ')';
 			ctx.font = this.font_size + this.font_type;
 			ctx.textBaseline = 'top';
 			this.measure = ctx.measureText(this.chara);
 			this.translateChange();
 			ctx.translate(this.trans_x, this.trans_y);
-			ctx.fillText(this.chara, this.x, this.y);
+			this.rotateRestore(cx, cy, true);
+			this.translateChange();
+			ctx.translate(-1 * this.trans_x, -1 * this.trans_y);
 		},
 
-		rotateRestore: function(selected, cx, cy) {
-			ctx.save();
-			if(this.angle === 0) {
-				this.meDraw();
-			} else {
-				this.rotated(cx, cy);
-				this.rotateDraw(cx, cy);
+		translateChange: function() {
+			if (this.select_type === 'tl') {
+				this.trans_x = this.start_measure.width - this.measure.width;
+				this.trans_y = this.start_font_size - this.font_size;
+			} else if (this.select_type === 'bl') {
+				this.trans_x = this.start_measure.width - this.measure.width;
+				this.trans_y = 0;
+			} else if (this.select_type === 'br') {
+				this.trans_x = 0;
+				this.trans_y = 0;
+			} else if (this.select_type === 'tr') {
+				this.trans_x = 0;
+				this.trans_y = this.start_font_size - this.font_size;
 			}
-			this.rotate_flg = true;
+		},
+
+		rotateRestore: function(cx, cy, selected) {
+			ctx.save();
+			this.rotated(cx, cy);
+			this.rotateDraw(cx, cy);
 			if(selected) this.selected(cx, cy);
 			ctx.restore();
 		},
@@ -401,33 +394,19 @@ function canvasApp() {
 				this.angle += Math.acos(cos * Math.PI / 180);
 				if(this.angle > 360) this.angle - 360;
 			}
-			ctx.translate(this.center_x, this.center_y);
-			ctx.rotate(this.angle * Math.PI / 180);
-			ctx.translate(-1 * this.center_x, -1 * this.center_y);
 		},
 
 		rotateDraw: function() {
+			ctx.translate(this.center_x, this.center_y);
+			ctx.rotate(this.angle * Math.PI / 180);
+			ctx.translate(-1 * this.center_x, -1 * this.center_y);
 			ctx.fillStyle = 'rgba(' + this.r + ', ' + this.g + ', ' + this.b + ', ' + this.a + ')';
 			ctx.font = this.font_size + this.font_type;
 			ctx.textBaseline = 'top';
 			this.measure = ctx.measureText(this.chara);
 			ctx.fillText(this.chara, this.x, this.y);
-		},
-
-		translateChange: function() {
-			if (this.select_type === 'tl') {
-				this.trans_x = this.start_measure.width - this.measure.width;
-				this.trans_y = this.start_font_size - this.font_size;
-			} else if (this.select_type === 'bl') {
-				this.trans_x = this.start_measure.width - this.measure.width;
-				this.trans_y = 0;
-			} else if (this.select_type === 'br') {
-				this.trans_x = 0;
-				this.trans_y = 0;
-			} else if (this.select_type === 'tr') {
-				this.trans_x = 0;
-				this.trans_y = this.start_font_size - this.font_size;
-			}
+			this.center_x = this.x + this.measure.width / 2;
+			this.center_y = this.y + this.font_size / 2;
 		},
 
 		resizeEnd: function() {
@@ -436,8 +415,8 @@ function canvasApp() {
 			this.y += this.trans_y;
 			this.trans_x = 0;
 			this.trans_y = 0;
+			this.start_measure = this.measure;
 			this.start_font_size = this.font_size;
-			this.allEnd();
 		},
 
 		allEnd: function() {
@@ -492,6 +471,30 @@ function canvasApp() {
 			var r = Math.sqrt(x * x + y * y);
 			if(radius1 <= r && radius2 >= r) return true;
 			return false;
+		},
+
+		movePositionCheck: function(cx, cy, tl_x, tl_y, bl_x, bl_y, br_x, br_y, tr_x, tr_y) {
+			var left_x = tl_x - bl_x;
+			var left_y = tl_y - bl_y;
+			var p_left_x = bl_x - cx;
+			var p_left_y = bl_y - cy;
+			if(left_x * p_left_y - left_y * p_left_x > 0) return false;
+			var bottom_x = bl_x - br_x;
+			var bottom_y = bl_y - br_y;
+			var p_bottom_x = br_x - cx;
+			var p_bottom_y = br_y - cy;
+			if(bottom_x * p_bottom_y - bottom_y * p_bottom_x > 0) return false;
+			var right_x = br_x - tr_x;
+			var right_y = br_y - tr_y;
+			var p_right_x = tr_x - cx;
+			var p_right_y = tr_y - cy;
+			if(right_x * p_right_y - right_y * p_right_x > 0) return false;
+			var top_x = tr_x - tl_x;
+			var top_y = tr_y - tl_y;
+			var p_top_x = tl_x - cx;
+			var p_top_y = tl_y - cy;
+			if(top_x * p_top_y - top_y * p_top_x > 0) return false;
+			return true;
 		}
 	};
 }
