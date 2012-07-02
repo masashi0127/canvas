@@ -1,0 +1,211 @@
+<html>
+<head>
+<title>Insert title here</title>
+<style type="text/css">
+* {
+	margin: 0;
+	padding: 0;
+}
+</style>
+<script type="text/javascript">
+window.addEventListener('load', eventWindowLoaded, false);
+function eventWindowLoaded() {
+	canvasApp();
+}
+
+function object(o) {
+	var f = object.f, i, len, n, prop;
+	f.prototype = o;
+	n = new f;
+	for (i=1, len=arguments.length; i<len; ++i)
+	for (prop in arguments[i])
+	n[prop] = arguments[i][prop];
+	return n;
+}
+object.f = function(){};
+
+function canvasApp() {
+
+	var Col = {
+		time: '',
+		x: 100,
+		y: 20,
+		brock_size: 40,
+		font_size: 10,
+		font_type: 'px monospace',
+
+		meDraw: function() {
+			ctx.fillStyle = 'rgba(0, 0, 0, 1)';
+			ctx.font = this.font_size + this.font_type;
+			ctx.textBaseline = 'top';
+			ctx.fillText(this.time, this.x, this.y);
+		}
+	};
+
+	var Row = {
+		date: '',
+		x: 30,
+		y: 50,
+		font_size: 10,
+		font_type: 'px monospace',
+
+		meDraw: function() {
+			ctx.fillStyle = 'rgba(0, 0, 0, 1)';
+			ctx.font = this.font_size + this.font_type;
+			ctx.textBaseline = 'top';
+			ctx.fillText(this.date, this.x, this.y);
+		}
+	};
+
+	var Segment = {
+		x: 75,
+		y: 25,
+		w: 0,
+		h: 0,
+		r: 0,
+		g: 0,
+		b: 0,
+		a: 0,
+
+		meDraw: function() {
+			ctx.strokeStyle = 'rgba(255,0,0,1)';
+			ctx.strokeRect(this.x, this.y, this.width, this.height);
+			ctx.fillStyle = 'rgba(' + this.r + ', ' + this.g + ', ' + this.b + ', ' + this.a + ')';
+			ctx.fillRect(this.x, this.y, this.width, this.height);
+		},
+
+		setColor: function(type) {
+			if(type === 0) {
+				this.r = 150;
+				this.g = 150;
+				this.b = 0;
+				this.a = 1;
+			} else if(type === 1) {
+				this.r = 0;
+				this.g = 150;
+				this.b = 150;
+				this.a = 1;
+			} else if(type === 2) {
+				this.r = 150;
+				this.g = 0;
+				this.b = 150;
+				this.a = 1;
+			} else if(type === 3) {
+				this.r = 50;
+				this.g = 150;
+				this.b = 50;
+				this.a = 1;
+			}
+		}
+	};
+
+	var arrData = {
+		"2012/06/01": [
+			0,0,0,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,2,2,2,2,2,2,2,2,3,3,3,3,3,0,0,0,0,0,
+			0,0,0,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,2,2,2,2,2,2,2,2,3,3,3,3,3,0,0,0,0,0,
+			0,0,0,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,2,2,2,2,2,2,2,2,3,3,3,3,3,0,0,0,0,0
+		],
+		"2012/06/02": [
+			0,0,0,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,2,2,2,2,2,2,2,2,3,3,3,3,3,0,0,0,0,0,
+			0,0,0,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,2,2,2,2,2,2,2,2,3,3,3,3,3,0,0,0,0,0,
+			0,0,0,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,2,2,2,2,2,2,2,2,3,3,3,3,3,0,0,0,0,0
+		],
+		"2012/06/03": [
+			0,0,0,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,2,2,2,2,2,2,2,2,3,3,3,3,3,0,0,0,0,0,
+			0,0,0,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,2,2,2,2,2,2,2,2,3,3,3,3,3,0,0,0,0,0,
+			0,0,0,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,2,2,2,2,2,2,2,2,3,3,3,3,3,0,0,0,0,0
+		],
+		"2012/06/04": [
+			0,0,0,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,2,2,2,2,2,2,2,2,3,3,3,3,3,0,0,0,0,0,
+			0,0,0,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,2,2,2,2,2,2,2,2,3,3,3,3,3,0,0,0,0,0,
+			0,0,0,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,2,2,2,2,2,2,2,2,3,3,3,3,3,0,0,0,0,0
+		],
+		"2012/06/05": [
+			0,0,0,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,2,2,2,2,2,2,2,2,3,3,3,3,3,0,0,0,0,0,
+			0,0,0,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,2,2,2,2,2,2,2,2,3,3,3,3,3,0,0,0,0,0,
+			0,0,0,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,2,2,2,2,2,2,2,2,3,3,3,3,3,0,0,0,0,0
+		],
+
+	}
+
+	var canvas = document.getElementById('canvas');
+	var ctx = canvas.getContext('2d');
+	var w = document.body.clientWidth;
+	var h = document.body.clientHeight - 50;
+	canvas.width = 1200;
+	canvas.height = 1000;
+	var arrCol = new Array();
+	var arrRow = new Array();
+	var arrSegment = new Array();
+
+	draw();
+
+	function draw() {
+
+		var j = 0;
+		for(date in arrData) {
+			// データ表示
+			var array = arrData[date];
+			var height = 25;
+			height += j * 30;
+			for(var k = 1; k < array.length; k++) {
+				var objSegment = object(Segment);
+				objSegment.x = 75;
+				objSegment.y = height;
+				objSegment.width = 8;
+				objSegment.height = 20;
+				objSegment.setColor(array[k]);
+				objSegment.x += k * objSegment.width;
+				objSegment.y += objSegment.height;
+				objSegment.meDraw();
+				arrSegment.push(objSegment);
+			}
+			j++;
+		}
+
+		// x軸項目
+		var i = 0;
+		var under_y = arrSegment.pop().y + 30;
+		ctx.beginPath();
+		ctx.strokeStyle = 'rgba(100, 100, 100, 0.5)';
+		ctx.moveTo(Col.x - 18, Col.y - 10);
+		ctx.lineTo(Col.x - 18, under_y);
+		ctx.stroke();
+		while(i < 24) {
+			var objCol = object(Col);
+			objCol.time = i;
+			objCol.x += i * objCol.brock_size;
+			objCol.meDraw();
+			arrCol.push(objCol);
+			ctx.beginPath();
+			ctx.strokeStyle = 'rgba(100, 100, 100, 0.5)';
+			ctx.moveTo(objCol.x + 22, objCol.y - 10);
+			ctx.lineTo(objCol.x + 22, under_y);
+			ctx.stroke();
+			i++;
+		}
+
+		// y軸項目
+		var j = 0;
+		var end_x = arrCol.pop().x;
+		for(date in arrData) {
+			var objRow = object(Row);
+			objRow.date = date;
+			objRow.y += j * 30;
+			objRow.meDraw();
+			arrRow.push(objRow);
+			ctx.beginPath();
+			ctx.strokeStyle = 'rgba(100, 100, 100, 0.5)';
+			ctx.moveTo(objRow.x, objRow.y - 10);
+			ctx.lineTo(end_x + 50, objRow.y - 10);
+			ctx.stroke();
+			j++;
+		}
+	}
+}
+</script>
+</head>
+<body>
+	<canvas id="canvas"></canvas>
+</body>
+</html>
