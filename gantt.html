@@ -35,30 +35,78 @@ object.f = function(){};
 
 function canvasApp() {
 
-	var Col = {
-		time: '',
-		x: 127,
-		y: 20,
-		brock_size: 40,
+	var LayoutTable = {
+		start_x: 10,
+		start_y: 10,
+		end_x: 0,
+		end_y: 0,
+		padding_top: 3,
+		padding_bottom: 3,
+		padding_left: 3,
+		padding_right: 3,
 		font_size: 12,
 		font_type: 'px monospace',
+		time_block_width: 0,
+		time_block_height: 0,
+		date_block_width: 0,
+		date_block_height: 0,
+		arrTimeMemory: new Array(),
+		arrDateMemory: new Array(),
+		arrBlock: new Array(),
+
+		setParam: function() {
+			this.time_block_width = parseInt(ctx.measureText('00').width) + parseInt(this.padding_left) + parseInt(this.padding_right);
+			this.time_block_height = parseInt(this.font_size) + parseInt(this.padding_top) + parseInt(this.padding_bottom);
+			this.date_block_width = parseInt(ctx.measureText('0000/00/00').width) + parseInt(this.padding_left) + parseInt(this.padding_right);
+			this.date_block_height = parseInt(this.font_size) + parseInt(this.padding_top) + parseInt(this.padding_bottom);
+			console.log(this);
+		}
+	};
+
+	var TimeMemory = {
+		time: '',
+		font_x: 0,
+		font_y: 0,
+		block_start_x: 0,
+		block_start_y: 0,
+		block_end_x: 0,
+		block_end_y: 0,
+		padding_left: 5,
+		padding_right: 5,
+		measure: '',
+
+		setParam: function(time, pre_x, pre_y) {
+			this.time = time
+			this.measure = ctx.measureText(time);
+			if(pre_x === 0 && pre_y === 0) {
+				this.block_start_x = parseInt(objLayoutTable.start_x) + parseInt(objLayoutTable.date_block_width);
+			} else {
+				this.block_start_x = pre_x;
+
+			}
+			this.block_start_y = objLayoutTable.start_y;
+			this.end_x += objLayoutTable.time_block_width;
+			this.end_y = objLayoutTable.time_block_height;
+			return [end_x + padding_right, end_y];
+		},
 
 		meDraw: function() {
 			ctx.fillStyle = 'rgba(0, 0, 0, 1)';
 			ctx.font = this.font_size + this.font_type;
 			ctx.textBaseline = 'top';
 			ctx.textAlign = 'center';
-			console.log(ctx.measureText(this.time));
+			ctx.strokeStyle = 'rgba(100, 0 , 0,1)';
+			ctx.strokeRect(this.x - 20, this.y - 12, this.x, this.y);
 			ctx.fillText(this.time, this.x, this.y);
 		}
 	};
 
-	var Row = {
+	var DateMemory = {
 		date: '',
-		x: 30,
-		y: 50,
-		font_size: 12,
-		font_type: 'px monospace',
+		start_x: 0,
+		start_y: 0,
+		end_x: 0,
+		end_y: 0,
 
 		meDraw: function() {
 			ctx.fillStyle = 'rgba(0, 0, 0, 1)';
@@ -66,6 +114,28 @@ function canvasApp() {
 			ctx.textBaseline = 'top';
 			ctx.textAlign = 'left';
 			ctx.fillText(this.date, this.x, this.y);
+		}
+	};
+
+	var Block = {
+		segment_count: 5,
+		arrSegment: '',
+		date: '',
+		time: '',
+		width: 50,
+		heigth: 30,
+		padding_top: 5,
+		padding_bottom: 5,
+
+		meDraw: function() {
+
+			for(var i = 0; i < this.arrSegment.length; i++) {
+				var objSegment = arrSegment[i];
+				ctx.strokeStyle = 'rgba(255, 255, 255 ,1)';
+				ctx.strokeRect(this.x, this.y, this.width, this.height);
+				ctx.fillStyle = 'rgba(' + this.r + ', ' + this.g + ', ' + this.b + ', ' + this.a + ')';
+				ctx.fillRect(this.x, this.y, this.width, this.height);
+			}
 		}
 	};
 
@@ -78,13 +148,6 @@ function canvasApp() {
 		g: 0,
 		b: 0,
 		a: 0,
-
-		meDraw: function() {
-			ctx.strokeStyle = 'rgba(255, 255 ,255 ,1)';
-			ctx.strokeRect(this.x, this.y, this.width, this.height);
-			ctx.fillStyle = 'rgba(' + this.r + ', ' + this.g + ', ' + this.b + ', ' + this.a + ')';
-			ctx.fillRect(this.x, this.y, this.width, this.height);
-		},
 
 		setColor: function(type) {
 			if(type === 0) {
@@ -145,73 +208,33 @@ function canvasApp() {
 	var h = document.body.clientHeight - 50;
 	canvas.width = 1200;
 	canvas.height = 1000;
-	var arrCol = new Array();
-	var arrRow = new Array();
-	var arrSegment = new Array();
+	var objLayoutTable = object(LayoutTable);
+	objLayoutTable.setParam();
 
-	draw();
+	//createLayoutTable();
+	//draw();
+
+	function createLayoutTable() {
+		for(var i = 0; i < 24; i++) {
+			var objTimeMemory = object(TimeMemory);
+
+		}
+	}
 
 	function draw() {
-
-		var j = 0;
 		for(date in arrData) {
-			// データ表示
-			var array = arrData[date];
-			var height = 25;
-			height += j * 30;
-			for(var k = 1; k < array.length; k++) {
+			var segmentsData = arrData[date];
+			var objBlock = object(Block);
+			objBlock.arrSegment = new Array();
+			var j = 0;
+			for(var i = 0; i < objBlock.segment_count; i++) {
 				var objSegment = object(Segment);
-				objSegment.x = 100;
-				objSegment.y = height;
-				objSegment.width = 8;
-				objSegment.height = 20;
-				objSegment.setColor(array[k]);
-				objSegment.x += k * objSegment.width;
-				objSegment.y += objSegment.height;
-				objSegment.meDraw();
-				arrSegment.push(objSegment);
+				objSegment.setColor(segmentsData[j]);
+				objBlock.arrSegment.push(objSegment);
+				j++;
 			}
-			j++;
 		}
 
-		// x軸項目
-		var i = 0;
-		var under_y = arrSegment.pop().y + 30;
-		ctx.beginPath();
-		ctx.strokeStyle = 'rgba(100, 100, 100, 0.5)';
-		ctx.moveTo(104, Col.y - 10);
-		ctx.lineTo(104, under_y);
-		ctx.stroke();
-		while(i < 24) {
-			var objCol = object(Col);
-			objCol.time = i;
-			objCol.x += i * objCol.brock_size;
-			objCol.meDraw();
-			arrCol.push(objCol);
-			ctx.beginPath();
-			ctx.strokeStyle = 'rgba(100, 100, 100, 0.5)';
-			ctx.moveTo(objCol.x + 20, objCol.y + 15);
-			ctx.lineTo(objCol.x + 20, objCol.y + 25);
-			ctx.stroke();
-			i++;
-		}
-
-		// y軸項目
-		var j = 0;
-		var end_x = arrCol.pop().x;
-		for(date in arrData) {
-			var objRow = object(Row);
-			objRow.date = date;
-			objRow.y += j * 30;
-			objRow.meDraw();
-			arrRow.push(objRow);
-			ctx.beginPath();
-			ctx.strokeStyle = 'rgba(100, 100, 100, 0.5)';
-			ctx.moveTo(objRow.x, objRow.y - 10);
-			ctx.lineTo(end_x + 20, objRow.y - 10);
-			ctx.stroke();
-			j++;
-		}
 	}
 }
 </script>
