@@ -14,178 +14,65 @@ function eventWindowLoaded() {
 	canvasApp();
 }
 
+function object(o) {
+	var f = object.f, i, len, n, prop;
+	f.prototype = o;
+	n = new f;
+	for (i=1, len=arguments.length; i<len; ++i)
+	for (prop in arguments[i])
+	n[prop] = arguments[i][prop];
+	return n;
+}
+object.f = function(){};
+
 function canvasApp() {
-	var canvas = document.getElementById('canvas');
-	var ctx = canvas.getContext('2d');
-	var textbutton = document.getElementById('textbutton');
-	var w = document.body.clientWidth;
-	var h = document.body.clientHeight - 50;
-	var arrObjChara = new Array();
-	window.me;
-	window.selectedChara;
-	window.resizeChara;
-	canvas.width = w;
-	canvas.height = h;
-	textbutton.addEventListener('click', division, false);
-	canvas.addEventListener('mousedown', charaSelectd, false);
-	canvas.addEventListener('mousemove', charaMoving, false);
-	canvas.addEventListener('mouseup', charaDetached, false);
-	box();
 
-	function division(e) {
-		me = object(Me);
-		var textchara = $("input#textfield").val();
-		var arrTextChara = textchara.split('');
-		for( var i = 0; i < arrTextChara.length; i++) {
-			var objChara = object(Chara);
-			objChara.chara = arrTextChara[i];
-			box();
-			objChara.setParam();
-			arrObjChara.push(objChara);
-		}
-		draw();
-	}
+	var Me = {
+		down: false,
+		up: true,
+		drag: false,
+		pre_x: 0,
+		pre_y: 0,
 
-	function draw() {
-		if(typeof arrObjChara !== 'undefined' && arrObjChara.length !== 0) {
-			for( var i = 0; i < arrObjChara.length; i++) {
-				var objChara = arrObjChara[i];
-				objChara.meDraw();
-			}
-		}
-	}
+		resizePositionCheck: function(cx, cy, rx, ry, radius) {
+			var x = cx - rx;
+			var y = cy - ry;
+			if(radius >= Math.sqrt(x * x + y * y)) return true;
+			return false;
+		},
 
-	function box() {
-		ctx.fillStyle = '#DDDDDD';
-		ctx.fillRect(0, 0, w, h);
-	}
+		rotatePositionCheck: function(cx, cy, rx, ry, radius1, radius2) {
+			var x = cx - rx;
+			var y = cy - ry;
+			var r = Math.sqrt(x * x + y * y);
+			if(radius1 <= r && radius2 >= r) return true;
+			return false;
+		},
 
-	function charaSelectd(e) {
-		me.down = true;
-		me.up = false;
-		box();
-		var cx = e.clientX;
-		var cy = e.clientY;
-		if (typeof selectedChara !== 'undefined') {
-			var coordinates = coordinate(selectedChara);
-			if(me.resizePositionCheck(cx, cy, coordinates.tlpx, coordinates.tlpy, selectedChara.resize_point_radius)) {
-				selectedChara.setSelectedParam('tl', cx, cy);
-			} else if(me.resizePositionCheck(cx, cy, coordinates.blpx, coordinates.blpy, selectedChara.resize_point_radius)) {
-				selectedChara.setSelectedParam('bl', cx, cy);
-			} else if(me.resizePositionCheck(cx, cy, coordinates.brpx, coordinates.brpy, selectedChara.resize_point_radius)) {
-				selectedChara.setSelectedParam('br', cx, cy);
-			} else if(me.resizePositionCheck(cx, cy, coordinates.trpx, coordinates.trpy, selectedChara.resize_point_radius)) {
-				selectedChara.setSelectedParam('tr', cx, cy);
-			} else if(me.rotatePositionCheck(cx, cy, coordinates.trpx, coordinates.trpy, selectedChara.resize_point_radius, selectedChara.rotate_point_radius)) {
-				selectedChara.rotate_flg = true;
-				selectedChara.rotateRestore(cx, cy, true);
-			} else {
-				arrObjChara.unshift(selectedChara);
-				delete selectedChara;
-			}
+		movePositionCheck: function(cx, cy, tl_x, tl_y, bl_x, bl_y, br_x, br_y, tr_x, tr_y) {
+			var left_x = tl_x - bl_x;
+			var left_y = tl_y - bl_y;
+			var p_left_x = bl_x - cx;
+			var p_left_y = bl_y - cy;
+			if(left_x * p_left_y - left_y * p_left_x > 0) return false;
+			var bottom_x = bl_x - br_x;
+			var bottom_y = bl_y - br_y;
+			var p_bottom_x = br_x - cx;
+			var p_bottom_y = br_y - cy;
+			if(bottom_x * p_bottom_y - bottom_y * p_bottom_x > 0) return false;
+			var right_x = br_x - tr_x;
+			var right_y = br_y - tr_y;
+			var p_right_x = tr_x - cx;
+			var p_right_y = tr_y - cy;
+			if(right_x * p_right_y - right_y * p_right_x > 0) return false;
+			var top_x = tr_x - tl_x;
+			var top_y = tr_y - tl_y;
+			var p_top_x = tl_x - cx;
+			var p_top_y = tl_y - cy;
+			if(top_x * p_top_y - top_y * p_top_x > 0) return false;
+			return true;
 		}
-		for (var i = 0; i < arrObjChara.length; i++) {
-			var objChara = arrObjChara[i];
-			var coordinates = coordinate(objChara);
-			if (typeof selectedChara === 'undefined' && coordinates.px <= cx && coordinates.nx >= cx && coordinates.py <= cy && coordinates.ny >= cy) {
-				var del_idx = i;
-				selectedChara = objChara;
-				selectedChara.rotateRestore(cx, cy, true);
-			} else {
-				objChara.rotateRestore(cx, cy, false);
-			}
-		}
-		if(typeof del_idx !== 'undefined') arrObjChara.splice(del_idx, 1);
-	}
-
-	function charaMoving(e) {
-		if(typeof selectedChara !== 'undefined' && me.down === true && me.up === false) {
-			me.drag = true;
-			box();
-			var cx = e.clientX;
-			var cy = e.clientY;
-			if (typeof selectedChara !== 'undefined') {
-				if (selectedChara.resizing_flg) {
-					selectedChara.resized(cx, cy);
-					selectedChara.resizeDraw(cx, cy);
-				} else if (selectedChara.rotate_flg) {
-					selectedChara.rotateRestore(cx, cy, true);
-				} else {
-					selectedChara.moved(cx, cy);
-					selectedChara.rotateRestore(cx, cy, true);
-				}
-				for(var i = 0; i < arrObjChara.length; i++) {
-					var objChara = arrObjChara[i];
-					if(objChara.angle !== 0) {
-						objChara.rotateRestore(cx, cy, false);
-					} else {
-						objChara.meDraw();
-					}
-				}
-			}
-		} else {
-			if(typeof selectedChara !== 'undefined') {
-				var cx = e.clientX;
-				var cy = e.clientY;
-				var coordinates = coordinate(selectedChara);
-				if(me.resizePositionCheck(cx, cy, coordinates.tlpx, coordinates.tlpy, selectedChara.resize_point_radius)) {
-					document.body.style.cursor = "nw-resize";
-				} else if(me.resizePositionCheck(cx, cy, coordinates.blpx, coordinates.blpy, selectedChara.resize_point_radius)) {
-					document.body.style.cursor = "sw-resize";
-				} else if(me.resizePositionCheck(cx, cy, coordinates.brpx, coordinates.brpy, selectedChara.resize_point_radius)) {
-					document.body.style.cursor = "se-resize";
-				} else if(me.resizePositionCheck(cx, cy, coordinates.trpx, coordinates.trpy, selectedChara.resize_point_radius)) {
-					document.body.style.cursor = "ne-resize";
-				} else if(me.movePositionCheck(cx, cy, coordinates.tlpx, coordinates.tlpy, coordinates.blpx, coordinates.blpy, coordinates.brpx, coordinates.brpy, coordinates.trpx, coordinates.trpy)) {
-					document.body.style.cursor = "move";
-				} else if(me.rotatePositionCheck(cx, cy, coordinates.trpx, coordinates.trpy, selectedChara.resize_point_radius, selectedChara.rotate_point_radius)) {
-					document.body.style.cursor = "progress";
-				} else {
-					document.body.style.cursor = "default";
-				}
-			}
-		}
-	}
-
-	function coordinate(objChara) {
-		var coordinates = {
-			px: objChara.x,
-			nx: objChara.x + objChara.measure.width,
-			py: objChara.y,
-			ny: objChara.y + objChara.font_size,
-			tlpx: objChara.top_left_x,
-			tlpy: objChara.top_left_y,
-			blpx: objChara.bottom_left_x,
-			blpy: objChara.bottom_left_y,
-			brpx: objChara.bottom_right_x,
-			brpy: objChara.bottom_right_y,
-			trpx: objChara.top_right_x,
-			trpy: objChara.top_right_y,
-		};
-		return coordinates;
-	}
-
-	function charaDetached(e) {
-		var cx = e.clientX;
-		var cy = e.clientY;
-		me.down = false;
-		me.up = true;
-		me.drag = false;
-		box();
-		if (typeof selectedChara !== 'undefined') {
-			if (selectedChara.resizing_flg) {
-				selectedChara.resizeEnd();
-				selectedChara.rotateRestore(cx, cy, true);
-			} else {
-				selectedChara.rotateRestore(cx, cy, true);
-			}
-			selectedChara.allEnd();
-		}
-		for (var i = 0; i < arrObjChara.length; i++) {
-			var objChara = arrObjChara[i];
-			objChara.rotateRestore(cx, cy, false);
-		}
-	}
+	};
 
 	var Chara = {
 		chara: '',
@@ -213,6 +100,7 @@ function canvasApp() {
 		rotate_point_radius: 10,
 		resizing_flg: false,
 		rotate_flg: false,
+		rotate_init_flg: false,
 		select_type: '',
 		angle: 0,
 		r: 0,
@@ -319,10 +207,8 @@ function canvasApp() {
 		},
 
 		resized: function(cx, cy) {
-			console.log(this.select_type);
 			if(this.select_type === 'tl' || this.select_type === 'bl') {
 				var parsent =  (this.x - cx + this.start_measure.width) / this.measure.width;
-				console.log(parsent);
 			} else {
 				var parsent =  (cx - this.x) / this.measure.width;
 			}
@@ -389,9 +275,12 @@ function canvasApp() {
 				} else {
 					var vy2 = this.center_y - cy;
 				}
-
 				var cos = (vx1 * vy1 + vx2 * vy2) / Math.sqrt((vx1 * vx1 + vy1 * vy1) * (vx2 * vx2 + vy2 * vy2));
-				this.angle += Math.acos(cos * Math.PI / 180);
+				if((cx - this.center_x) * (me.pre_y - this.center_y) - (cy - this.center_y) * (me.pre_x - this.center_x) > 0) {
+					this.angle -= Math.acos(cos * Math.PI / 180);
+				} else {
+					this.angle += Math.acos(cos * Math.PI / 180);
+				}
 				if(this.angle > 360) this.angle - 360;
 			}
 		},
@@ -451,64 +340,182 @@ function canvasApp() {
 		}
 	};
 
-	var Me = {
-		down: false,
-		up: true,
-		drag: false,
-		pre_x: 0,
-		pre_y: 0,
+	var canvas = document.getElementById('canvas');
+	var ctx = canvas.getContext('2d');
+	var textbutton = document.getElementById('textbutton');
+	var w = document.body.clientWidth;
+	var h = document.body.clientHeight - 50;
+	var arrObjChara = new Array();
+	window.me = object(Me);
+	window.selectedChara;
+	window.resizeChara;
+	canvas.width = w;
+	canvas.height = h;
+	textbutton.addEventListener('click', division, false);
+	canvas.addEventListener('mousedown', charaSelectd, false);
+	canvas.addEventListener('mousemove', charaMoving, false);
+	canvas.addEventListener('mouseup', charaDetached, false);
+	box();
 
-		resizePositionCheck: function(cx, cy, rx, ry, radius) {
-			var x = cx - rx;
-			var y = cy - ry;
-			if(radius >= Math.sqrt(x * x + y * y)) return true;
-			return false;
-		},
-
-		rotatePositionCheck: function(cx, cy, rx, ry, radius1, radius2) {
-			var x = cx - rx;
-			var y = cy - ry;
-			var r = Math.sqrt(x * x + y * y);
-			if(radius1 <= r && radius2 >= r) return true;
-			return false;
-		},
-
-		movePositionCheck: function(cx, cy, tl_x, tl_y, bl_x, bl_y, br_x, br_y, tr_x, tr_y) {
-			var left_x = tl_x - bl_x;
-			var left_y = tl_y - bl_y;
-			var p_left_x = bl_x - cx;
-			var p_left_y = bl_y - cy;
-			if(left_x * p_left_y - left_y * p_left_x > 0) return false;
-			var bottom_x = bl_x - br_x;
-			var bottom_y = bl_y - br_y;
-			var p_bottom_x = br_x - cx;
-			var p_bottom_y = br_y - cy;
-			if(bottom_x * p_bottom_y - bottom_y * p_bottom_x > 0) return false;
-			var right_x = br_x - tr_x;
-			var right_y = br_y - tr_y;
-			var p_right_x = tr_x - cx;
-			var p_right_y = tr_y - cy;
-			if(right_x * p_right_y - right_y * p_right_x > 0) return false;
-			var top_x = tr_x - tl_x;
-			var top_y = tr_y - tl_y;
-			var p_top_x = tl_x - cx;
-			var p_top_y = tl_y - cy;
-			if(top_x * p_top_y - top_y * p_top_x > 0) return false;
-			return true;
+	function division(e) {
+		var textchara = $("input#textfield").val();
+		var arrTextChara = textchara.split('');
+		for( var i = 0; i < arrTextChara.length; i++) {
+			var objChara = object(Chara);
+			objChara.chara = arrTextChara[i];
+			box();
+			objChara.setParam();
+			arrObjChara.push(objChara);
 		}
-	};
-}
+		draw();
+	}
 
-function object(o) {
-	var f = object.f, i, len, n, prop;
-	f.prototype = o;
-	n = new f;
-	for (i=1, len=arguments.length; i<len; ++i)
-	for (prop in arguments[i])
-	n[prop] = arguments[i][prop];
-	return n;
+	function draw() {
+		if(typeof arrObjChara !== 'undefined' && arrObjChara.length !== 0) {
+			for( var i = 0; i < arrObjChara.length; i++) {
+				var objChara = arrObjChara[i];
+				objChara.meDraw();
+			}
+		}
+	}
+
+	function box() {
+		ctx.fillStyle = '#DDDDDD';
+		ctx.fillRect(0, 0, w, h);
+	}
+
+	function charaSelectd(e) {
+		me.down = true;
+		me.up = false;
+		box();
+		var cx = e.clientX;
+		var cy = e.clientY;
+		if (typeof selectedChara !== 'undefined') {
+			var coordinates = coordinate(selectedChara);
+			if(me.resizePositionCheck(cx, cy, coordinates.tlpx, coordinates.tlpy, selectedChara.resize_point_radius)) {
+				selectedChara.setSelectedParam('tl', cx, cy);
+			} else if(me.resizePositionCheck(cx, cy, coordinates.blpx, coordinates.blpy, selectedChara.resize_point_radius)) {
+				selectedChara.setSelectedParam('bl', cx, cy);
+			} else if(me.resizePositionCheck(cx, cy, coordinates.brpx, coordinates.brpy, selectedChara.resize_point_radius)) {
+				selectedChara.setSelectedParam('br', cx, cy);
+			} else if(me.resizePositionCheck(cx, cy, coordinates.trpx, coordinates.trpy, selectedChara.resize_point_radius)) {
+				selectedChara.setSelectedParam('tr', cx, cy);
+			} else if(me.rotatePositionCheck(cx, cy, coordinates.trpx, coordinates.trpy, selectedChara.resize_point_radius, selectedChara.rotate_point_radius)) {
+				selectedChara.rotate_flg = true;
+				selectedChara.rotate_init_flg = true;
+				selectedChara.rotateRestore(cx, cy, true);
+			} else {
+				arrObjChara.unshift(selectedChara);
+				delete selectedChara;
+			}
+		}
+		for (var i = 0; i < arrObjChara.length; i++) {
+			var objChara = arrObjChara[i];
+			var coordinates = coordinate(objChara);
+			if (typeof selectedChara === 'undefined' && coordinates.px <= cx && coordinates.nx >= cx && coordinates.py <= cy && coordinates.ny >= cy) {
+				var del_idx = i;
+				selectedChara = objChara;
+				selectedChara.rotateRestore(cx, cy, true);
+			} else {
+				objChara.rotateRestore(cx, cy, false);
+			}
+		}
+		if(typeof del_idx !== 'undefined') arrObjChara.splice(del_idx, 1);
+	}
+
+	function charaMoving(e) {
+		if(typeof selectedChara !== 'undefined' && me.down === true && me.up === false) {
+			me.drag = true;
+			box();
+			var cx = e.clientX;
+			var cy = e.clientY;
+			if (typeof selectedChara !== 'undefined') {
+				if (selectedChara.resizing_flg) {
+					if(!selectedChara.rotate_init_flg) {
+						selectedChara.resized(cx, cy);
+						selectedChara.resizeDraw(cx, cy);
+					} else {
+						selectedChara.rotateRestore(cx, cy, true);
+					}
+				} else if (selectedChara.rotate_flg) {
+					selectedChara.rotateRestore(cx, cy, true);
+				} else {
+					selectedChara.moved(cx, cy);
+					selectedChara.rotateRestore(cx, cy, true);
+				}
+				for(var i = 0; i < arrObjChara.length; i++) {
+					var objChara = arrObjChara[i];
+					if(objChara.angle !== 0) {
+						objChara.rotateRestore(cx, cy, false);
+					} else {
+						objChara.meDraw();
+					}
+				}
+			}
+		} else {
+			if(typeof selectedChara !== 'undefined') {
+				var cx = e.clientX;
+				var cy = e.clientY;
+				var coordinates = coordinate(selectedChara);
+				if(me.resizePositionCheck(cx, cy, coordinates.tlpx, coordinates.tlpy, selectedChara.resize_point_radius)) {
+					document.body.style.cursor = "nw-resize";
+				} else if(me.resizePositionCheck(cx, cy, coordinates.blpx, coordinates.blpy, selectedChara.resize_point_radius)) {
+					document.body.style.cursor = "sw-resize";
+				} else if(me.resizePositionCheck(cx, cy, coordinates.brpx, coordinates.brpy, selectedChara.resize_point_radius)) {
+					document.body.style.cursor = "se-resize";
+				} else if(me.resizePositionCheck(cx, cy, coordinates.trpx, coordinates.trpy, selectedChara.resize_point_radius)) {
+					document.body.style.cursor = "ne-resize";
+				} else if(me.movePositionCheck(cx, cy, coordinates.tlpx, coordinates.tlpy, coordinates.blpx, coordinates.blpy, coordinates.brpx, coordinates.brpy, coordinates.trpx, coordinates.trpy)) {
+					document.body.style.cursor = "move";
+				} else if(me.rotatePositionCheck(cx, cy, coordinates.trpx, coordinates.trpy, selectedChara.resize_point_radius, selectedChara.rotate_point_radius)) {
+					document.body.style.cursor = "progress";
+				} else {
+					document.body.style.cursor = "default";
+				}
+			}
+		}
+	}
+
+	function coordinate(objChara) {
+		var coordinates = {
+			px: objChara.x,
+			nx: objChara.x + objChara.measure.width,
+			py: objChara.y,
+			ny: objChara.y + objChara.font_size,
+			tlpx: objChara.top_left_x,
+			tlpy: objChara.top_left_y,
+			blpx: objChara.bottom_left_x,
+			blpy: objChara.bottom_left_y,
+			brpx: objChara.bottom_right_x,
+			brpy: objChara.bottom_right_y,
+			trpx: objChara.top_right_x,
+			trpy: objChara.top_right_y,
+		};
+		return coordinates;
+	}
+
+	function charaDetached(e) {
+		var cx = e.clientX;
+		var cy = e.clientY;
+		me.down = false;
+		me.up = true;
+		me.drag = false;
+		box();
+		if (typeof selectedChara !== 'undefined') {
+			if (selectedChara.resizing_flg) {
+				selectedChara.resizeEnd();
+				selectedChara.rotateRestore(cx, cy, true);
+			} else {
+				selectedChara.rotateRestore(cx, cy, true);
+			}
+			selectedChara.allEnd();
+		}
+		for (var i = 0; i < arrObjChara.length; i++) {
+			var objChara = arrObjChara[i];
+			objChara.rotateRestore(cx, cy, false);
+		}
+	}
 }
-object.f = function(){};
 </script>
 </head>
 <body>
